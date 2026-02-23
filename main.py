@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.mediroute_router import router
+from routers.mediroute_streaming_router import router as streaming_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,13 +32,19 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite default port
+    allow_origins=[
+        "http://localhost:5173",  # Vite default port
+        "http://localhost:8080",  # Python http.server
+        "http://127.0.0.1:8080",
+        "null",  # For file:// protocol (local HTML files)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router)
+app.include_router(streaming_router)
 
 @app.get("/health")
 async def health():

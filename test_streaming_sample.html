@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediRoute Streaming Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .progress-section {
+            margin-top: 30px;
+            display: none;
+        }
+        .progress-section.active {
+            display: block;
+        }
+        .progress-bar-container {
+            background: #ecf0f1;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .current-agent {
+            font-size: 18px;
+            color: #2c3e50;
+            margin: 15px 0;
+            padding: 10px;
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            border-radius: 3px;
+        }
+        .logs {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+        .log-start { color: #3498db; }
+        .log-complete { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-timestamp {
+            color: #95a5a6;
+            margin-right: 10px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #d5f4e6;
+            border-left: 4px solid #2ecc71;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.active {
+            display: block;
+        }
+        .result h3 {
+            color: #27ae60;
+            margin-top: 0;
+        }
+        .result-details {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .error-result {
+            background: #fadbd8;
+            border-left-color: #e74c3c;
+        }
+        .error-result h3 {
+            color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 MediRoute AI - Streaming Test</h1>
+        <p class="subtitle">Test the real-time streaming endpoint</p>
+
+        <form id="testForm">
+            <div class="form-group">
+                <label>Session ID:</label>
+                <input type="text" id="sessionId" value="test-session-001" required>
+            </div>
+
+            <div class="form-group">
+                <label>Symptoms:</label>
+                <textarea id="symptoms" required>severe chest pain and shortness of breath</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Location:</label>
+                <input type="text" id="location" value="Makati City" required>
+            </div>
+
+            <div class="form-group">
+                <label>Insurance:</label>
+                <input type="text" id="insurance" value="PhilHealth" required>
+            </div>
+
+            <div class="form-group">
+                <label>Current Situation (Optional):</label>
+                <textarea id="currentSituation">Patient is conscious but in distress</textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">Start Analysis</button>
+        </form>
+
+        <div class="progress-section" id="progressSection">
+            <h3>Progress</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            <div class="current-agent" id="currentAgent">Initializing...</div>
+        </div>
+
+        <div class="logs" id="logs"></div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('testForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const currentAgent = document.getElementById('currentAgent');
+        const logsContainer = document.getElementById('logs');
+        const resultContainer = document.getElementById('result');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span>${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function updateProgress(percentage) {
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%`;
+        }
+
+        function showResult(success, data) {
+            resultContainer.className = success ? 'result active' : 'result active error-result';
+            
+            if (success) {
+                const report = data.report;
+                resultContainer.innerHTML = `
+                    <h3>✅ Analysis Complete!</h3>
+                    <div class="result-details">
+                        <p><strong>Hospital:</strong> ${report.hospital_name || 'N/A'}</p>
+                        <p><strong>Address:</strong> ${report.address || 'N/A'}</p>
+                        <p><strong>Distance:</strong> ${report.distance_km || 'N/A'} km</p>
+                        <p><strong>LOA Number:</strong> ${report.loa_number || 'N/A'}</p>
+                        <p><strong>Valid Until:</strong> ${report.valid_until || 'N/A'}</p>
+                        <p><strong>Case Summary:</strong> ${report.case_summary || 'N/A'}</p>
+                    </div>
+                `;
+            } else {
+                resultContainer.innerHTML = `
+                    <h3>❌ Analysis Failed</h3>
+                    <div class="result-details">
+                        <p><strong>Reason:</strong> ${data.reason || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Reset UI
+            logsContainer.innerHTML = '';
+            resultContainer.className = 'result';
+            progressSection.classList.add('active');
+            updateProgress(0);
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            const requestData = {
+                session_id: document.getElementById('sessionId').value,
+                symptoms: document.getElementById('symptoms').value,
+                location: document.getElementById('location').value,
+                insurance: document.getElementById('insurance').value,
+                current_situation: document.getElementById('currentSituation').value || null
+            };
+
+            addLog('🚀 Starting analysis...', 'start');
+
+            try {
+                const response = await fetch('http://localhost:8000/chat/analyze-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            try {
+                                const event = JSON.parse(data);
+                                
+                                switch (event.type) {
+                                    case 'start':
+                                        addLog(event.data.message, 'start');
+                                        currentAgent.textContent = 'Starting...';
+                                        break;
+
+                                    case 'node_start':
+                                        const startMsg = `→ ${event.data.node_display_name}: ${event.data.message}`;
+                                        addLog(startMsg, 'start');
+                                        currentAgent.textContent = `🔄 ${event.data.node_display_name}`;
+                                        updateProgress(event.data.progress.percentage);
+                                        break;
+
+                                    case 'node_complete':
+                                        const completeMsg = `✓ ${event.data.message} (${event.data.progress.percentage}%)`;
+                                        addLog(completeMsg, 'complete');
+                                        updateProgress(event.data.progress.percentage);
+                                        break;
+
+                                    case 'final_result':
+                                        if (event.data.success) {
+                                            addLog('✅ Analysis completed successfully!', 'complete');
+                                            currentAgent.textContent = '✅ Complete!';
+                                            showResult(true, event.data);
+                                        } else {
+                                            addLog(`❌ Analysis failed: ${event.data.reason}`, 'error');
+                                            currentAgent.textContent = '❌ Failed';
+                                            showResult(false, event.data);
+                                        }
+                                        break;
+
+                                    case 'error':
+                                        addLog(`❌ Error: ${event.data.message}`, 'error');
+                                        currentAgent.textContent = '❌ Error';
+                                        showResult(false, event.data);
+                                        break;
+                                }
+                            } catch (parseError) {
+                                console.error('Failed to parse event:', parseError);
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                addLog(`❌ Request failed: ${error.message}`, 'error');
+                currentAgent.textContent = '❌ Connection Error';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Start Analysis';
+            }
+        });
+
+        // Initial log message
+        addLog('Ready to start streaming analysis. Fill in the form and click "Start Analysis".', 'info');
+    </script>
+</body>
+</html>

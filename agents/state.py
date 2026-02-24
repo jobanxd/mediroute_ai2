@@ -7,6 +7,7 @@ class ClassificationAgentOutput(TypedDict):
     symptoms: str
     classification_type: str
     severity: str
+    recommended_action: str
     confidence: str
     classification_rationale: str
     dispatch_required: bool
@@ -76,6 +77,7 @@ class LOAOutput(TypedDict):
     remarks: str
     # Failure
     reason: Optional[str]
+    assigned_doctor = Optional[str]
 
 
 class ReportOutput(TypedDict):
@@ -90,6 +92,7 @@ class ReportOutput(TypedDict):
     current_situation: str
     classification_type: str
     severity: str
+    recommended_action: str
     dispatch_required: bool
     dispatch_rationale: str
     # Insurance
@@ -103,6 +106,8 @@ class ReportOutput(TypedDict):
     # Hospital
     hospital_id: str
     hospital_name: str
+    assigned_doctor_name: str
+    assigned_doctor_title: str
     address: str
     contact: str
     emergency_contact: str

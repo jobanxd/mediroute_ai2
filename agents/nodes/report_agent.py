@@ -22,7 +22,9 @@ async def report_agent_node(state: AgentState) -> AgentState:
     ca_output = state["classification_agent_output"]
     dispatch_required = ca_output.get("dispatch_required", True)
     dispatch_rationale = ca_output.get("dispatch_rationale", "")
+    recommended_action = ca_output.get("recommended_action", "HOSPITAL_ADMISSION")
     loa_output = state["loa_output"]
+    assigned_doctor = loa_output.get("assigned_doctor", {})
 
     # ── LLM Call: case_summary, recommendation_reason, next_steps ────────────
     messages = [
@@ -32,6 +34,7 @@ async def report_agent_node(state: AgentState) -> AgentState:
             current_situation=loa_output["current_situation"],
             classification_type=loa_output["classification_type"],
             severity=loa_output["severity"],
+            recommended_action=recommended_action,
             dispatch_required=dispatch_required,
             dispatch_rationale=dispatch_rationale,
             insurance_provider=loa_output["insurance_provider"],
@@ -40,6 +43,8 @@ async def report_agent_node(state: AgentState) -> AgentState:
             contact=loa_output["contact"],
             emergency_contact=loa_output["emergency_contact"],
             distance_km=loa_output["distance_km"],
+            assigned_doctor_name=assigned_doctor.get("name", "Not assigned"),
+            assigned_doctor_title=assigned_doctor.get("title", "N/A"),
             loa_number=loa_output["loa_number"],
             valid_until=loa_output["valid_until"],
             approved_services=json.dumps(loa_output["approved_services"], indent=2),
@@ -100,6 +105,7 @@ async def report_agent_node(state: AgentState) -> AgentState:
         "current_situation": loa_output["current_situation"],
         "classification_type": loa_output["classification_type"],
         "severity": loa_output["severity"],
+        "recommended_action": recommended_action,
         "dispatch_required": dispatch_required,
         "dispath_rationale": dispatch_rationale,
         # Insurance
@@ -113,6 +119,8 @@ async def report_agent_node(state: AgentState) -> AgentState:
         # Hospital
         "hospital_id": loa_output["hospital_id"],
         "hospital_name": loa_output["hospital_name"],
+        "assigned_doctor_name": assigned_doctor.get("name", "Not assigned"),
+        "assigned_doctor_title": assigned_doctor.get("title", "N/A"),
         "address": loa_output["address"],
         "contact": loa_output["contact"],
         "emergency_contact": loa_output["emergency_contact"],

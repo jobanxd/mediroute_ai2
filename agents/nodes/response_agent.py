@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 # ── Phase 1 ───────────────────────────────────────────────────────────────────
-
 async def _handle_phase1(state: AgentState) -> str:
     ca_output = state.get("classification_agent_output", {})
     match_output = state.get("match_agent_output", {})
@@ -33,6 +32,7 @@ async def _handle_phase1(state: AgentState) -> str:
             symptoms=ca_output.get("symptoms", "unknown"),
             classification_type=ca_output.get("classification_type", "GENERAL"),
             severity=ca_output.get("severity", "URGENT"),
+            recommended_action=ca_output.get("recommended_action", "HOSPITAL_ADMISSION"),
             dispatch_required=ca_output.get("dispatch_required", False),
             location=ca_output.get("location", "unknown"),
             insurance_provider=ca_output.get("insurance_provider", "unknown"),
@@ -49,9 +49,9 @@ async def _handle_phase1(state: AgentState) -> str:
 
 
 # ── Phase 2 ───────────────────────────────────────────────────────────────────
-
 async def _handle_phase2(state: AgentState, report_output: dict) -> str:
     ca_output = state.get("classification_agent_output", {})
+    assigned_doctor = report_output.get("assigned_doctor", {})
 
     messages = [
         {"role": "system", "content": ra_prompts.RESPONSE_AGENT_PHASE2_SYSTEM_PROMPT},
@@ -59,6 +59,7 @@ async def _handle_phase2(state: AgentState, report_output: dict) -> str:
             symptoms=report_output.get("symptoms", ca_output.get("symptoms", "unknown")),
             classification_type=report_output.get("classification_type", "GENERAL"),
             severity=report_output.get("severity", "URGENT"),
+            recommended_action=report_output.get("recommended_action", "HOSPITAL_ADMISSION"),
             dispatch_required=report_output.get("dispatch_required", False),
             dispatch_rationale=report_output.get("dispatch_rationale", "Not provided"),
             current_situation=report_output.get("current_situation", "Not provided"),
@@ -67,6 +68,8 @@ async def _handle_phase2(state: AgentState, report_output: dict) -> str:
             address=report_output.get("address", "unknown"),
             emergency_contact=report_output.get("emergency_contact", "unknown"),
             distance_km=report_output.get("distance_km", "unknown"),
+            assigned_doctor_name=assigned_doctor.get("name", "Not assigned"),
+            assigned_doctor_title=assigned_doctor.get("title", "N/A"),
             loa_number=report_output.get("loa_number", "unknown"),
             date_issued=report_output.get("date_issued", "unknown"),
             valid_until=report_output.get("valid_until", "unknown"),
@@ -83,8 +86,7 @@ async def _handle_phase2(state: AgentState, report_output: dict) -> str:
     logger.info("Response agent Phase 2 — calling LLM...")
 
     response = await call_llm(messages=messages)
-    return response.choices[0].message.content or "Your authorization is ready. Please proceed to the hospital."
-
+    return response.choices[0].message.content or "Your authorization is ready. Please proceed to the facility."
 
 
 async def response_agent_node(state: AgentState) -> AgentState:

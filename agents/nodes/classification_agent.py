@@ -54,6 +54,11 @@ async def classification_agent_node(state: AgentState) -> AgentState:
                             "type": "string",
                             "enum": ["CRITICAL", "URGENT", "MODERATE"]
                         },
+                        "recommended_action": {
+                            "type": "string",
+                            "enum": ["HOSPITAL_ADMISSION", "OUTPATIENT_CONSULTATION"],
+                            "description": "Whether the patient requires hospital admission or outpatient consultation"
+                        },
                         "confidence": {
                             "type": "string",
                             "enum": ["HIGH", "MEDIUM", "LOW"]

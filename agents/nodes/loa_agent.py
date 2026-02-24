@@ -9,9 +9,33 @@ from langchain_core.messages import AIMessage
 from agents.state import AgentState
 from agents.prompts import loa_agent_prompts as loa_prompts
 from data.hospitals import HOSPITALS, EMERGENCY_LOA_SERVICES_MAP
+from data.doctors import DOCTORS
 from utils.llm_util import call_llm
 
 logger = logging.getLogger(__name__)
+
+
+def _get_assigned_doctor(hospital_id: str, classification_type: str) -> dict | None:
+    """
+    Returns the best available doctor for the given hospital and classification type.
+    Prefers 24h available doctors. Returns None if no match found.
+    """
+    matches = [
+        d for d in DOCTORS
+        if d["hospital_id"] == hospital_id
+        and d["specialization"] == classification_type
+    ]
+
+    if not matches:
+        # Fallback: any doctor at that hospital
+        matches = [d for d in DOCTORS if d["hospital_id"] == hospital_id]
+
+    if not matches:
+        return None
+
+    # Prefer 24h available
+    available = [d for d in matches if d["available_24h"]]
+    return available[0] if available else matches[0]
 
 
 async def loa_agent_node(state: AgentState) -> AgentState:
@@ -36,11 +60,10 @@ async def loa_agent_node(state: AgentState) -> AgentState:
     symptoms = ca_output.get("symptoms", state.get("symptoms", "unknown"))
     insurance_provider = ca_output.get("insurance_provider", state.get("insurance", "unknown"))
     severity = ca_output.get("severity", "URGENT")
+    recommended_action = ca_output.get("recommended_action", "HOSPITAL_ADMISSION")
     current_situation = state.get("current_situation") or "Not provided"
 
     # ── Resolve hospital_raw ───────────────────────────────────────────────────
-    # Scenario 1 & 2: hospital_raw is already in match_agent_output
-    # Scenario 3: user chose from top 3 — resolve from chosen_hospital name
     hospital_raw = ma_output.get("hospital_raw")
 
     if not hospital_raw:
@@ -72,14 +95,12 @@ async def loa_agent_node(state: AgentState) -> AgentState:
                 "next_agent": "end"
             }
 
-        # Also resolve distance_km from top_hospitals list if available
         top_hospitals = ma_output.get("top_hospitals", [])
         matched_top = next(
             (h for h in top_hospitals if h["hospital_name"].lower() == chosen_hospital.lower()),
             None
         )
 
-        # Build a resolved ma_output so the rest of the node works uniformly
         resolved_hospital_details = matched_top or {}
         hospital_name = hospital_raw["name"]
         hospital_id = hospital_raw["id"]
@@ -103,6 +124,22 @@ async def loa_agent_node(state: AgentState) -> AgentState:
             "Hospital resolved from match_agent_output (%s): %s",
             "preferred" if ma_output.get("preferred_hospital_used") else "auto-selected",
             hospital_name
+        )
+
+    # ── Resolve assigned doctor ───────────────────────────────────────────────
+    assigned_doctor = _get_assigned_doctor(hospital_id, classification_type)
+
+    if assigned_doctor:
+        logger.info(
+            "Assigned doctor: %s — %s (24h available: %s)",
+            assigned_doctor["name"],
+            assigned_doctor["title"],
+            assigned_doctor["available_24h"]
+        )
+    else:
+        logger.warning(
+            "No doctor found for hospital %s with specialization %s",
+            hospital_id, classification_type
         )
 
     # ── Resolve approved services ─────────────────────────────────────────────
@@ -137,8 +174,11 @@ async def loa_agent_node(state: AgentState) -> AgentState:
             current_situation=current_situation,
             classification_type=classification_type,
             severity=severity,
+            recommended_action=recommended_action,
             insurance_provider=insurance_provider,
             hospital_name=hospital_name,
+            assigned_doctor_name=assigned_doctor["name"] if assigned_doctor else "Not assigned",
+            assigned_doctor_title=assigned_doctor["title"] if assigned_doctor else "N/A",
             approved_services=json.dumps(approved_services, indent=2),
         )}
     ]
@@ -193,6 +233,7 @@ async def loa_agent_node(state: AgentState) -> AgentState:
         "symptoms": symptoms,
         "classification_type": classification_type,
         "severity": severity,
+        "recommended_action": recommended_action,
         "current_situation": current_situation,
         "hospital_id": hospital_id,
         "hospital_name": hospital_name,
@@ -205,20 +246,37 @@ async def loa_agent_node(state: AgentState) -> AgentState:
         "exclusions": exclusions,
         "clinical_justification": clinical_justification,
         "remarks": remarks,
+        "assigned_doctor": assigned_doctor or {},
     }
 
     logger.info("LOA generated: %s", loa_number)
     logger.info("LOA output: %s", json.dumps(loa_output, indent=2))
 
     # ── Build LOA summary message ─────────────────────────────────────────────
+    doctor_line = (
+        f"Assigned Doctor: {assigned_doctor['name']} — {assigned_doctor['title']} "
+        f"(24h: {'Yes' if assigned_doctor['available_24h'] else 'No'} | "
+        f"Contact: {assigned_doctor['contact']})"
+        if assigned_doctor
+        else "Assigned Doctor: Not available"
+    )
+
+    action_line = (
+        "Authorization Type: OUTPATIENT CONSULTATION"
+        if recommended_action == "OUTPATIENT_CONSULTATION"
+        else "Authorization Type: HOSPITAL ADMISSION"
+    )
+
     summary = (
         f"LOA Created — {loa_number}\n"
         f"Issued: {date_issued} | Valid Until: {valid_until}\n\n"
+        f"{action_line}\n\n"
         f"Patient: {symptoms} ({classification_type} | {severity})\n"
         f"Insurance: {insurance_provider}\n\n"
         f"Hospital: {hospital_name}\n"
         f"Address: {address}\n"
-        f"Emergency Contact: {emergency_contact} | Distance: {distance_km} km\n\n"
+        f"Emergency Contact: {emergency_contact} | Distance: {distance_km} km\n"
+        f"{doctor_line}\n\n"
         f"Approved Services: {', '.join(approved_services)}\n"
         f"Room Type: {room_type}\n"
         f"Exclusions: {', '.join(exclusions) if exclusions else 'None'}\n\n"

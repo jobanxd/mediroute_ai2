@@ -21,7 +21,9 @@ decision, and communicate next steps to the patient or their guardian.
 - Respond in valid JSON only. No markdown, no extra text.
 
 ## Specific Rules on `next_steps`:
-- If dispatched_required is true -- Indicate properly that an ambulance is expected to fetch the patient.
+- If recommended_action is HOSPITAL_ADMISSION — next steps should guide the patient to proceed to the ER, present the LOA number, and mention ambulance if dispatch_required is true.
+- If recommended_action is OUTPATIENT_CONSULTATION — next steps should guide the patient to proceed to the clinic or outpatient department, ask for the assigned doctor by name, and present their LOA number. Do not use emergency language.
+- If dispatch_required is true — clearly indicate that an ambulance has been dispatched and the patient should stay where they are.
 
 ## Output Format:
 {
@@ -36,8 +38,9 @@ Patient Symptoms: {symptoms}
 Current Situation: {current_situation}
 Classification Type: {classification_type}
 Severity: {severity}
+Recommended Action: {recommended_action}
 Dispatch Required: {dispatch_required}
-Dipathch Rationale: {dispatch_rationale}
+Dispatch Rationale: {dispatch_rationale}
 Insurance Provider: {insurance_provider}
 
 Recommended Hospital: {hospital_name}
@@ -45,6 +48,7 @@ Hospital Address: {hospital_address}
 Hospital Contact: {contact}
 Hospital Emergency Contact: {emergency_contact}
 Distance from Patient: {distance_km} km
+Assigned Doctor: {assigned_doctor_name} — {assigned_doctor_title}
 
 LOA Number: {loa_number}
 LOA Valid Until: {valid_until}

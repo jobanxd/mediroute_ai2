@@ -28,6 +28,17 @@ Your job is to extract and classify the following information from the patient's
 - URGENT — serious condition requiring prompt care within hours (e.g., stable chest pain, moderate burns, seizure that has resolved)
 - MODERATE — needs medical attention but not immediately life-threatening (e.g., mild respiratory distress, minor trauma)
 
+## Recommended Action Guide:
+- HOSPITAL_ADMISSION — patient requires immediate or same-day hospital care, monitoring, or intervention
+  Use when: severity is CRITICAL or URGENT, dispatch is required, symptoms suggest active deterioration,
+  or the condition requires imaging/procedures/ICU that cannot be done outpatient.
+
+- OUTPATIENT_CONSULTATION — patient can safely see a doctor at a clinic or ER without admission
+  Use when: severity is MODERATE, patient is stable and mobile, symptoms are non-acute,
+  and no emergency procedures are immediately indicated.
+
+When in doubt, default to HOSPITAL_ADMISSION. Patient safety takes priority.
+
 ## Dispatch Guide:
 Set dispatch_required to true if ANY of the following apply:
 - Severity is CRITICAL
@@ -74,6 +85,7 @@ When in doubt, default to true. Patient safety takes priority.
   "symptoms": "<patient symptoms in plain clinical language>",
   "classification_type": "<one of the 6 types>",
   "severity": "<CRITICAL | URGENT | MODERATE>",
+  "recommended_action": "<HOSPITAL_ADMISSION | OUTPATIENT_CONSULTATION>",
   "confidence": "<HIGH | MEDIUM | LOW>",
   "classification_rationale": "<one sentence explaining the classification decision>",
   "dispatch_required": <true | false>,

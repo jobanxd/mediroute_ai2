@@ -30,6 +30,7 @@ async def loa_agent_node(state: AgentState) -> AgentState:
     classification_type = ca_output.get("classification_type", "GENERAL")
     symptoms = ca_output.get("symptoms", state["symptoms"])
     insurance_provider = ca_output.get("insurance_provider", state["insurance"])
+    severity = ca_output.get("severity", "URGENT")
     current_situation = state.get("current_situation") or "Not provided"
     hospital_raw = ma_output.get("hospital_raw", {})
 
@@ -68,6 +69,7 @@ async def loa_agent_node(state: AgentState) -> AgentState:
             symptoms=symptoms,
             current_situation=current_situation,
             classification_type=classification_type,
+            severity=severity,
             insurance_provider=insurance_provider,
             hospital_name=ma_output["hospital_name"],
             approved_services=json.dumps(approved_services, indent=2),
@@ -126,6 +128,7 @@ async def loa_agent_node(state: AgentState) -> AgentState:
         # Patient info
         "symptoms": symptoms,
         "classification_type": classification_type,
+        "severity": severity,
         "current_situation": current_situation,
         # Hospital info
         "hospital_id": ma_output["hospital_id"],

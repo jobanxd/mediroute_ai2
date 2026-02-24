@@ -90,6 +90,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
     location = ca_output.get("location", "unknown")
     insurance_provider = ca_output.get("insurance_provider", "unknown")
     symptoms = ca_output.get("symptoms", state["symptoms"])
+    severity = ca_output.get("severity", "URGENT")
     current_situation = state.get("current_situation") or "Not provided"
 
     # ── LLM Call: Select required services from LOA map ───────────────────────
@@ -105,6 +106,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
         {"role": "system", "content": ma_prompts.SERVICES_SELECTION_SYSTEM_PROMPT},
         {"role": "user", "content": ma_prompts.SERVICES_SELECTION_QUERY_PROMPT.format(
             classification_type=classification_type,
+            severity=severity,
             symptoms=symptoms,
             current_situation=current_situation,
             available_services=json.dumps(all_labels, indent=2),
@@ -125,9 +127,13 @@ async def match_agent_node(state: AgentState) -> AgentState:
                         "selected_services": {
                             "type": "array",
                             "items": {"type": "string"}
+                        },
+                        "services_rationale": {
+                            "type": "string",
+                            "description": "One sentence explaining the selection logic based on symptoms and severity"
                         }
                     },
-                    "required": ["selected_services"],
+                    "required": ["selected_services", "services_rationale"],
                 },
             },
         }

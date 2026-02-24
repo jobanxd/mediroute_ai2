@@ -44,19 +44,55 @@ async def classification_agent_node(state: AgentState) -> AgentState:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "symptoms": {"type": "string"},
-                        "classification_type": {"type": "string"},
-                        "location": {"type": "string"},
-                        "insurance_provider": {"type": "string"},
+                        "symptoms": {
+                            "type": "string",
+                            "description": "Patient symptoms in plain clinical language"
+                        },
+                        "classification_type": {
+                            "type": "string",
+                            "description": "One of the 6 predefined classification types"
+                        },
+                        "severity": {
+                            "type": "string",
+                            "enum": ["CRITICAL", "URGENT", "MODERATE"]
+                        },
+                        "confidence": {
+                            "type": "string",
+                            "enum": ["HIGH", "MEDIUM", "LOW"]
+                        },
+                        "classification_rationale": {
+                            "type": "string",
+                            "description": "One sentence explaining the classification decision"
+                        },
+                        "dispatch_required": {
+                            "type": "boolean"
+                        },
+                        "dispatch_rationale": {
+                            "type": "string",
+                            "description": "One sentence explaining the dispatch decision"
+                        },
+                        "location": {
+                            "type": "string",
+                            "description": "Extracted location"
+                        },
+                        "insurance_provider": {
+                            "type": "string",
+                            "description": "Normalized insurance provider name"
+                        }
                     },
                     "required": [
                         "symptoms",
                         "classification_type",
+                        "severity",
+                        "confidence",
+                        "classification_rationale",
+                        "dispatch_required",
+                        "dispatch_rationale",
                         "location",
-                        "insurance_provider",
+                        "insurance_provider"
                     ],
-                },
-            },
+                }
+            }
         }
     )
 

@@ -17,6 +17,9 @@ async def report_agent_node(state: AgentState) -> AgentState:
     logger.info("Report Agent Node")
     logger.info("=" * 30)
 
+    ca_output = state["classification_agent_output"]
+    dispatch_required = ca_output.get("dispatch_required", True)
+    dispatch_rationale = ca_output.get("dispatch_rationale", "")
     loa_output = state["loa_output"]
 
     # ── LLM Call: case_summary, recommendation_reason, next_steps ────────────
@@ -26,6 +29,7 @@ async def report_agent_node(state: AgentState) -> AgentState:
             symptoms=loa_output["symptoms"],
             current_situation=loa_output["current_situation"],
             classification_type=loa_output["classification_type"],
+            severity=loa_output["severity"],
             insurance_provider=loa_output["insurance_provider"],
             hospital_name=loa_output["hospital_name"],
             hospital_address=loa_output["address"],
@@ -91,6 +95,9 @@ async def report_agent_node(state: AgentState) -> AgentState:
         "symptoms": loa_output["symptoms"],
         "current_situation": loa_output["current_situation"],
         "classification_type": loa_output["classification_type"],
+        "severity": loa_output["severity"],
+        "dispatch_required": dispatch_required,
+        "dispath_rationale": dispatch_rationale,
         # Insurance
         "insurance_provider": loa_output["insurance_provider"],
         # LOA details

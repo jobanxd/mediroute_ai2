@@ -5,6 +5,11 @@ class ClassificationAgentOutput(TypedDict):
     """Output model of classification agent."""
     symptoms: str
     classification_type: str
+    severity: str
+    confidence: str
+    classification_rationale: str
+    dispatch_required: bool
+    dispatch_rationale: str
     location: str
     insurance_provider: str
 
@@ -35,6 +40,7 @@ class LOAOutput(TypedDict):
     # Patient
     symptoms: str
     classification_type: str
+    severity: str
     current_situation: str
     # Hospital
     hospital_id: str
@@ -65,6 +71,9 @@ class ReportOutput(TypedDict):
     symptoms: str
     current_situation: str
     classification_type: str
+    severity: str
+    dispatch_required: bool
+    dispatch_rationale: str
     # Insurance
     insurance_provider: str
     # LOA details

@@ -107,6 +107,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
     insurance_provider = ca_output.get("insurance_provider", "unknown")
     symptoms = ca_output.get("symptoms")
     severity = ca_output.get("severity", "URGENT")
+    recommended_action = ca_output.get("recommended_action", "HOSPITAL_ADMISSION")
     preferred_hospital = ca_output.get("preferred_hospital")  # may be None
 
     # ── LLM Call: Select required services from LOA map ───────────────────────
@@ -123,6 +124,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
             classification_type=classification_type,
             severity=severity,
             symptoms=symptoms,
+            recommended_action=recommended_action,
             available_services=json.dumps(all_labels, indent=2),
         )}
     ]
@@ -187,15 +189,27 @@ async def match_agent_node(state: AgentState) -> AgentState:
     logger.info("Patient coordinates: %s, %s", patient_lat, patient_lng)
 
     # ── Helper: Check if a hospital passes insurance + capability checks ───────
-    def passes_checks(hospital: dict) -> bool:
+    def passes_checks(hospital: dict) -> tuple[bool, str | None]:
+        """Returns (passed, fail_reason). fail_reason is None if passed."""
         if insurance_provider not in hospital["insurance_accepted"]:
-            return False
+            return False, f"does not accept {insurance_provider} insurance"
+
         if classification_type not in hospital["emergency_types_supported"]:
-            return False
+            return False, f"does not support {classification_type} emergencies"
+
         hospital_caps = hospital["capabilities"]
-        return all(hospital_caps.get(cap, False) for cap in required_capability_keys)
+        missing_caps = [
+            cap for cap in required_capability_keys
+            if not hospital_caps.get(cap, False)
+        ]
+        if missing_caps:
+            return False, f"missing required capabilities: {', '.join(missing_caps)}"
+
+        return True, None
 
     # ── Step 2: Check preferred hospital first (if provided) ──────────────────
+    fail_reason = None  # initialize so it's always defined for downstream steps
+
     if preferred_hospital:
         logger.info("Preferred hospital requested: %s", preferred_hospital)
 
@@ -204,58 +218,61 @@ async def match_agent_node(state: AgentState) -> AgentState:
             None
         )
 
-        if preferred_match and passes_checks(preferred_match):
-            logger.info("Preferred hospital passed all checks — routing directly to LOA agent.")
-
-            distance_km = round(_haversine_distance(
-                patient_lat, patient_lng,
-                preferred_match["lat"], preferred_match["lng"]
-            ), 2)
-
-            match_output = {
-                "matched": True,
-                "hospital_id": preferred_match["id"],
-                "hospital_name": preferred_match["name"],
-                "address": preferred_match["address"],
-                "contact": preferred_match["contact"],
-                "emergency_contact": preferred_match["emergency_contact"],
-                "distance_km": distance_km,
-                "capabilities": preferred_match["capabilities"],
-                "hospital_raw": preferred_match,
-                "preferred_hospital_used": True,
-            }
-            next_agent = "loa_agent"
-
-            logger.info("Match output (preferred): %s", json.dumps(
-                {k: v for k, v in match_output.items() if k != "hospital_raw"}, indent=2
-            ))
-
-            summary = await _summarize_match(
-                classification_type, severity, location, insurance_provider,
-                preferred_hospital, selected_labels, match_output, next_agent
-            )
-            logger.info("Match summary: %s", summary)
-
-            return {
-                "messages": [AIMessage(content=summary, name="match_agent")],
-                "selected_loa_services": selected_labels,
-                "match_agent_output": match_output,
-                "next_agent": next_agent # skip hospital selection, go straight to LOA
-            }
-        else:
-            # Preferred hospital failed — log reason and continue
-            fail_reason = (
-                "not found in the hospital registry"
-                if not preferred_match
-                else f"failed insurance or capability checks for {classification_type} with {insurance_provider}"
-            )
+        if not preferred_match:
+            fail_reason = "not found in the hospital registry"
             logger.warning(
-                "Preferred hospital '%s' not found or failed checks — falling back to ranked search.",
-                preferred_hospital
+                "Preferred hospital '%s' — %s. Falling back to ranked search.",
+                preferred_hospital, fail_reason
             )
+        else:
+            passed, fail_reason = passes_checks(preferred_match)
+
+            if passed:
+                logger.info("Preferred hospital passed all checks — routing directly to LOA agent.")
+
+                distance_km = round(_haversine_distance(
+                    patient_lat, patient_lng,
+                    preferred_match["lat"], preferred_match["lng"]
+                ), 2)
+
+                match_output = {
+                    "matched": True,
+                    "hospital_id": preferred_match["id"],
+                    "hospital_name": preferred_match["name"],
+                    "address": preferred_match["address"],
+                    "contact": preferred_match["contact"],
+                    "emergency_contact": preferred_match["emergency_contact"],
+                    "distance_km": distance_km,
+                    "capabilities": preferred_match["capabilities"],
+                    "hospital_raw": preferred_match,
+                    "preferred_hospital_used": True,
+                }
+                next_agent = "loa_agent"
+
+                logger.info("Match output (preferred): %s", json.dumps(
+                    {k: v for k, v in match_output.items() if k != "hospital_raw"}, indent=2
+                ))
+
+                summary = await _summarize_match(
+                    classification_type, severity, location, insurance_provider,
+                    preferred_hospital, selected_labels, match_output, next_agent
+                )
+                logger.info("Match summary: %s", summary)
+
+                return {
+                    "messages": [AIMessage(content=summary, name="match_agent")],
+                    "selected_loa_services": selected_labels,
+                    "match_agent_output": match_output,
+                    "next_agent": next_agent
+                }
+            else:
+                logger.warning(
+                    "Preferred hospital '%s' failed checks — %s. Falling back to ranked search.",
+                    preferred_hospital, fail_reason
+                )
 
     # ── Step 3: Filter all hospitals by insurance + capability ────────────────
-    capable_hospitals = [h for h in HOSPITALS if passes_checks(h)]
+    capable_hospitals = [h for h in HOSPITALS if passes_checks(h)[0]]  # unpack tuple, take bool only
 
     logger.info("Hospitals after insurance + capability filter: %s", len(capable_hospitals))
 
@@ -279,12 +296,12 @@ async def match_agent_node(state: AgentState) -> AgentState:
 
         match_output = {
             "matched": False,
-            "no_match_reason": (
-                f"No hospitals found accepting {insurance_provider} "
-                f"with required services for {classification_type}."
-            )
+            "top_hospitals": [],
+            "preferred_hospital_fail_reason": fail_reason,
+            "preferred_hospital_used": False,
+            "auto_selected": False,
         }
-        next_agent = "end"
+        next_agent = "END"
 
         summary = await _summarize_match(
             classification_type, severity, location, insurance_provider,
@@ -333,7 +350,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
             "messages": [AIMessage(content=summary, name="match_agent")],
             "selected_loa_services": selected_labels,
             "match_agent_output": match_output,
-            "next_agent": next_agent  # skip selection, go straight to LOA
+            "next_agent": next_agent
         }
 
     # ── Step 7: Non-critical — return top 3 for user to choose ────────────────
@@ -354,6 +371,7 @@ async def match_agent_node(state: AgentState) -> AgentState:
     match_output = {
         "matched": True,
         "top_hospitals": top_3,
+        "preferred_hospital_fail_reason": fail_reason,
         "preferred_hospital_used": False,
         "auto_selected": False,
     }
@@ -371,5 +389,5 @@ async def match_agent_node(state: AgentState) -> AgentState:
         "messages": [AIMessage(content=summary, name="match_agent")],
         "selected_loa_services": selected_labels,
         "match_agent_output": match_output,
-        "next_agent": next_agent  # present choices to user
+        "next_agent": next_agent
     }

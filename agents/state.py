@@ -43,6 +43,7 @@ class HospitalOption(TypedDict):
 class MatchTop3Output(TypedDict):
     matched: bool
     top_hospitals: list[HospitalOption]
+    preferred_hospital_fail_reason: str
     preferred_hospital_used: bool
     auto_selected: bool
 

@@ -80,6 +80,7 @@ HOSPITALS = [
         },
         "insurance_accepted": [
             "Insular Life Assurance Company",
+            "Maxicare",
         ],
         "emergency_types_supported": [
             "CARDIAC", "TRAUMA", "NEUROLOGICAL", "RESPIRATORY", "BURNS", "GENERAL"
@@ -181,6 +182,7 @@ HOSPITALS = [
         "insurance_accepted": [
             "AIA Philippines Life",
             "Insular Life Assurance Company",
+            "Maxicare",
         ],
         "emergency_types_supported": ["TRAUMA", "BURNS", "RESPIRATORY", "GENERAL"]
     },

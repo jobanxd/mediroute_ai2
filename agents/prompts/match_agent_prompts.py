@@ -16,6 +16,8 @@ based on their symptoms, severity, and emergency classification.
 - For MODERATE severity: be conservative; authorize only what is directly indicated.
 - Return only labels exactly as provided in the available services list. Never modify or invent labels.
 - Respond in valid JSON only. No markdown, no extra text.
+- IF recommended action is "HOSPITAL_ADMISSION" choose appropriate services that needs to be done in Hospital such as e.g. "burn unit admission", etc.
+- IF recommended action is "OUTPATIENT_CONSULATION" choose appropriate services that can be done in the hospital as outpatient.
 
 ## Output Format:
 {
@@ -28,6 +30,7 @@ SERVICES_SELECTION_QUERY_PROMPT = """
 Classification Type: {classification_type}
 Severity: {severity}
 Symptoms: {symptoms}
+Recommended Action: {recommended_action}
 
 Available services for this emergency type:
 {available_services}

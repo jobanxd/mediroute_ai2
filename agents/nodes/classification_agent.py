@@ -2,6 +2,8 @@
 import logging
 import json
 
+from langchain_core.messages import AIMessage
+
 from agents.state import AgentState
 from agents.prompts import classification_agent_prompts as ca_prompts
 from utils.llm_util import call_llm
@@ -17,21 +19,17 @@ async def classification_agent_node(state: AgentState) -> AgentState:
     logger.info("Classification Agent Node")
     logger.info("="*30)
 
-    symptoms = state["symptoms"]
-    location = state["location"]
-    insurance = state["insurance"]
-    current_situation = state["current_situation"]
+    state_messages = state["messages"]
 
     # Build messages for LLM call
     messages = [
-        {"role": "system", "content": ca_prompts.CLASSIFICATION_AGENT_SYSTEM_PROMPT},
-        {"role": "user", "content": ca_prompts.CLASSIFICATION_AGENT_QUERY_PROMPT.format(
-            symptoms=symptoms,
-            location=location,
-            insurance=insurance,
-            current_situation=current_situation,
-        )}
+        {"role": "system", "content": ca_prompts.CLASSIFICATION_AGENT_SYSTEM_PROMPT}
     ]
+
+    for msg in state_messages:
+        role = "assistant" if isinstance(msg, AIMessage) else "user"
+        content = msg.content
+        messages.append({"role": role, "content": content})
 
     logger.info("Calling LLM with messages: %s", json.dumps(messages, indent=2))
 
@@ -78,6 +76,10 @@ async def classification_agent_node(state: AgentState) -> AgentState:
                         "insurance_provider": {
                             "type": "string",
                             "description": "Normalized insurance provider name"
+                        },
+                        "preferred_hospital": {
+                            "type": "string",
+                            "description": "Preferred hospital of the patient"
                         }
                     },
                     "required": [
@@ -89,7 +91,8 @@ async def classification_agent_node(state: AgentState) -> AgentState:
                         "dispatch_required",
                         "dispatch_rationale",
                         "location",
-                        "insurance_provider"
+                        "insurance_provider",
+                        "preferred_hospital"
                     ],
                 }
             }
@@ -114,8 +117,11 @@ async def classification_agent_node(state: AgentState) -> AgentState:
             "insurance_provider": "unknown"
         }
 
+    summary = extracted.pop("summary", "Classification complete. Routing to hospital matching.")
+
     # Store as stringified JSON in the message so match_agent can parse it
     return {
+        "messages": [AIMessage(content=summary, name="classification_agent")],
         "classification_agent_output": extracted,
         "next_agent": "match_agent"
     }

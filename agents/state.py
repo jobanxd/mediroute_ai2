@@ -1,4 +1,5 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Annotated
+from langgraph.graph.message import add_messages
 
 
 class ClassificationAgentOutput(TypedDict):
@@ -12,9 +13,10 @@ class ClassificationAgentOutput(TypedDict):
     dispatch_rationale: str
     location: str
     insurance_provider: str
+    preferred_hospital: str
 
 
-class MatchAgentOutput(TypedDict):
+class MatchAgentAutoSelectedOutput(TypedDict):
     """Output model of match agent."""
     matched: bool
     hospital_id: str
@@ -26,6 +28,22 @@ class MatchAgentOutput(TypedDict):
     capabilities: dict
     hospital_raw: dict
     no_match_reason: Optional[str]
+
+
+class HospitalOption(TypedDict):
+    hospital_id: str
+    hospital_name: str
+    address: str
+    contact: str
+    emergency_contact: str
+    distance_km: float
+
+
+class MatchTop3Output(TypedDict):
+    matched: bool
+    top_hospitals: list[HospitalOption]
+    preferred_hospital_used: bool
+    auto_selected: bool
 
 
 class LOAOutput(TypedDict):
@@ -99,15 +117,12 @@ class ReportOutput(TypedDict):
 
 class AgentState(TypedDict):
     """State of the Agents"""
+    messages: Annotated[list, add_messages]
     next_agent: str
-    # Input fields
-    symptoms: str
-    location: str
-    insurance: str
-    current_situation: Optional[str]
     # Agent outputs
     classification_agent_output: ClassificationAgentOutput
     selected_loa_services: list[str]
-    match_agent_output: MatchAgentOutput
+    match_agent_output: MatchAgentAutoSelectedOutput | MatchTop3Output
+    chosen_hospital: Optional[str]
     loa_output: LOAOutput
     report_output: ReportOutput

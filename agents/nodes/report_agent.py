@@ -1,6 +1,8 @@
 import logging
 import json
 
+from langchain_core.messages import AIMessage
+
 from agents.state import AgentState
 from agents.prompts import report_agent_prompts as ra_prompts
 from utils.llm_util import call_llm
@@ -30,6 +32,8 @@ async def report_agent_node(state: AgentState) -> AgentState:
             current_situation=loa_output["current_situation"],
             classification_type=loa_output["classification_type"],
             severity=loa_output["severity"],
+            dispatch_required=dispatch_required,
+            dispatch_rationale=dispatch_rationale,
             insurance_provider=loa_output["insurance_provider"],
             hospital_name=loa_output["hospital_name"],
             hospital_address=loa_output["address"],
@@ -125,6 +129,7 @@ async def report_agent_node(state: AgentState) -> AgentState:
     ))
 
     return {
+        "messages": [AIMessage(content=report_output.get("case_summary"), name="report_agent")],
         "report_output": report_output,
-        "next_agent": "end"
+        "next_agent": "response_agent"
     }

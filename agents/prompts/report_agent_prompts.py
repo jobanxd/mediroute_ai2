@@ -20,6 +20,9 @@ decision, and communicate next steps to the patient or their guardian.
 - The LOA number and validity must be prominently referenced in next_steps.
 - Respond in valid JSON only. No markdown, no extra text.
 
+## Specific Rules on `next_steps`:
+- If dispatched_required is true -- Indicate properly that an ambulance is expected to fetch the patient.
+
 ## Output Format:
 {
   "case_summary": "<professional clinical overview for internal records>",
@@ -33,6 +36,8 @@ Patient Symptoms: {symptoms}
 Current Situation: {current_situation}
 Classification Type: {classification_type}
 Severity: {severity}
+Dispatch Required: {dispatch_required}
+Dipathch Rationale: {dispatch_rationale}
 Insurance Provider: {insurance_provider}
 
 Recommended Hospital: {hospital_name}

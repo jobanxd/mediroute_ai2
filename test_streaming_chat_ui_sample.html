@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediRoute AI — Stream Test</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --accent:   #2f81f7;
+    --accent2:  #3fb950;
+    --warn:     #f78166;
+    --text:     #e6edf3;
+    --muted:    #7d8590;
+    --user-bg:  #1f6feb;
+    --ai-bg:    #1c2128;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* ── Shell ── */
+  .shell {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    height: 92vh;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, #2f81f7, #0d47a1);
+    border-radius: 8px; display: grid; place-items: center; font-size: 16px;
+  }
+  .logo-text  { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+  .logo-sub   { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .mode-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; padding: 3px 8px; border-radius: 20px;
+    letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500;
+  }
+  .mode-badge.stream  { background: rgba(47,129,247,0.15); color: var(--accent); border: 1px solid rgba(47,129,247,0.3); }
+  .mode-badge.regular { background: rgba(63,185,80,0.12);  color: var(--accent2); border: 1px solid rgba(63,185,80,0.3); }
+
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .toggle { position: relative; width: 38px; height: 20px; cursor: pointer; }
+  .toggle input { display: none; }
+  .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 20px; transition: background 0.2s; }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+  /* ── Session bar ── */
+  .session-bar {
+    padding: 8px 24px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .session-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .session-bar input { flex: 1; background: transparent; border: none; outline: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* ── Messages ── */
+  .messages {
+    flex: 1; overflow-y: auto;
+    padding: 24px; display: flex; flex-direction: column; gap: 16px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row { display: flex; gap: 12px; animation: fadeUp 0.25s ease both; }
+  .msg-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    flex-shrink: 0; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; margin-top: 2px;
+  }
+  .avatar.ai-av   { background: linear-gradient(135deg, #2f81f7, #0d47a1); }
+  .avatar.user-av { background: linear-gradient(135deg, #3fb950, #1a7f37); }
+
+  .bubble {
+    max-width: 78%; padding: 12px 16px;
+    border-radius: 12px; font-size: 14px; line-height: 1.6;
+  }
+  .bubble.user { background: var(--user-bg); border-radius: 12px 2px 12px 12px; }
+  .bubble.ai   { background: var(--ai-bg); border: 1px solid var(--border); border-radius: 2px 12px 12px 12px; }
+
+  .bubble-meta {
+    margin-top: 6px; font-size: 11px; color: var(--muted);
+    font-family: 'DM Mono', monospace; display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .meta-tag { padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+
+  /* ── Pipeline container ── */
+  .pipeline-container { max-width: 78%; display: flex; flex-direction: column; gap: 6px; }
+
+  /* ── Trace toggle header (shown after finalize) ── */
+  .trace-toggle {
+    display: none;
+    align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    padding: 5px 10px; border-radius: 6px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase;
+    transition: background 0.15s;
+  }
+  .trace-toggle:hover { background: rgba(255,255,255,0.07); }
+  .trace-toggle.visible { display: flex; }
+
+  .trace-chevron { margin-left: auto; font-size: 9px; transition: transform 0.2s; }
+  .trace-toggle.open .trace-chevron { transform: rotate(180deg); }
+
+  /* ── Pipeline box ── */
+  .pipeline {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;
+    max-height: 800px; opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.25s ease;
+  }
+  .pipeline.collapsed { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+
+  /* ── Individual step ── */
+  .pipe-step {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 6px 8px; border-radius: 6px;
+    transition: background 0.2s;
+  }
+  .pipe-step.active { background: rgba(47,129,247,0.07); }
+
+  .step-icon {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center;
+    font-size: 9px; margin-top: 2px; font-family: 'DM Mono', monospace;
+  }
+  .step-icon.idle   { border: 1px solid var(--border); }
+  .step-icon.active { border: 1px solid var(--accent); background: rgba(47,129,247,0.1); }
+  .step-icon.done   { background: rgba(63,185,80,0.15); border: 1px solid var(--accent2); }
+  .step-icon.err    { background: rgba(247,129,102,0.15); border: 1px solid var(--warn); }
+
+  @keyframes pulseBorder {
+    0%,100% { box-shadow: 0 0 0 0 rgba(47,129,247,0.4); }
+    50%      { box-shadow: 0 0 0 4px rgba(47,129,247,0); }
+  }
+  .step-icon.active { animation: pulseBorder 1.2s ease infinite; }
+
+  /* step body: label + status stacked */
+  .step-body { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+  .step-label { font-size: 12px; line-height: 1.4; font-weight: 500; }
+  .pipe-step.active .step-label     { color: var(--text); }
+  .pipe-step.done .step-label       { color: var(--accent2); }
+  .pipe-step.error-step .step-label { color: var(--warn); }
+  .pipe-step:not(.active):not(.done):not(.error-step) .step-label { color: var(--muted); }
+
+  /* ★ Live status message line ★ */
+  .step-status {
+    font-size: 11px; line-height: 1.3; font-style: italic;
+    color: var(--muted); display: none;
+  }
+  .step-status.visible              { display: block; }
+  .pipe-step.active .step-status    { color: var(--accent); }
+  .pipe-step.done .step-status      { color: var(--accent2); font-style: normal; }
+  .pipe-step.error-step .step-status { color: var(--warn); font-style: normal; }
+
+  /* data card (per step, expandable) */
+  .step-data-card {
+    margin-top: 5px;
+    background: rgba(47,129,247,0.04); border: 1px solid rgba(47,129,247,0.15);
+    border-radius: 6px; padding: 8px 10px;
+    font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 180px; overflow-y: auto; display: none;
+  }
+  .step-data-card.open { display: block; }
+
+  /* right column: time + data button */
+  .step-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .step-time  { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+  .step-data-btn {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(47,129,247,0.1); border: 1px solid rgba(47,129,247,0.25);
+    color: var(--accent); cursor: pointer; white-space: nowrap;
+    transition: background 0.15s; display: none;
+  }
+  .step-data-btn.visible { display: block; }
+  .step-data-btn:hover   { background: rgba(47,129,247,0.22); }
+
+  /* ── Input ── */
+  .input-area {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+  }
+  .input-wrap {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; display: flex; align-items: center;
+    padding: 0 14px; transition: border-color 0.2s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); }
+  .input-wrap textarea {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; resize: none; padding: 12px 0; max-height: 120px; line-height: 1.5;
+  }
+  .input-wrap textarea::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 42px; height: 42px; border-radius: 10px; border: none;
+    background: var(--accent); color: white; cursor: pointer;
+    display: grid; place-items: center;
+    transition: background 0.15s, transform 0.1s; flex-shrink: 0;
+  }
+  .send-btn:hover:not(:disabled) { background: #4191ff; transform: scale(1.04); }
+  .send-btn:disabled { background: var(--border); cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; color: var(--muted); text-align: center;
+  }
+  .empty-icon { font-size: 40px; opacity: 0.4; }
+  .empty-state h3 { font-size: 15px; color: var(--text); font-weight: 500; }
+  .empty-state p  { font-size: 13px; max-width: 280px; line-height: 1.6; }
+</style>
+</head>
+
+<body>
+<div class="shell">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🏥</div>
+      <div>
+        <div class="logo-text">MediRoute AI</div>
+        <div class="logo-sub">Stream Debugger</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="toggle-wrap">
+        <span>Streaming</span>
+        <label class="toggle">
+          <input type="checkbox" id="streamToggle" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="mode-badge stream" id="modeBadge">SSE</div>
+    </div>
+  </header>
+
+  <div class="session-bar">
+    <span class="session-label">SESSION /</span>
+    <input type="text" id="sessionId" value="test-session-001" spellcheck="false">
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🩺</div>
+      <h3>MediRoute Stream Tester</h3>
+      <p>Toggle between <strong>SSE streaming</strong> and regular mode. Watch the agent pipeline in real time.</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="userInput" placeholder="Describe the emergency or ask a question…" rows="1"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+const BASE_URL = 'http://localhost:8000';
+
+const NODE_LABELS = {
+  orchestrator_agent:   '🧠 Orchestrator',
+  classification_agent: '🏥 Classification',
+  match_agent:          '🔍 Hospital Match',
+  loa_agent:            '📋 LOA Generator',
+  report_agent:         '📝 Report Builder',
+  response_agent:       '💬 Response',
+};
+
+const messagesEl   = document.getElementById('messages');
+const emptyState   = document.getElementById('emptyState');
+const userInputEl  = document.getElementById('userInput');
+const sendBtn      = document.getElementById('sendBtn');
+const sessionIdEl  = document.getElementById('sessionId');
+const streamToggle = document.getElementById('streamToggle');
+const modeBadge    = document.getElementById('modeBadge');
+
+streamToggle.addEventListener('change', () => {
+  modeBadge.textContent = streamToggle.checked ? 'SSE' : 'REST';
+  modeBadge.className   = 'mode-badge ' + (streamToggle.checked ? 'stream' : 'regular');
+});
+
+userInputEl.addEventListener('input', () => {
+  userInputEl.style.height = 'auto';
+  userInputEl.style.height = Math.min(userInputEl.scrollHeight, 120) + 'px';
+});
+
+userInputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+});
+
+sendBtn.addEventListener('click', handleSend);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Converts plain AI text to safe HTML with newlines and basic markdown
+function formatText(str) {
+  return escHtml(str)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function clearEmpty() { if (emptyState?.parentNode) emptyState.remove(); }
+function scrollBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+function addUserBubble(text) {
+  clearEmpty();
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `<div class="avatar user-av">U</div><div class="bubble user">${escHtml(text)}</div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function addAiBubble(text, meta = {}) {
+  const row  = document.createElement('div');
+  row.className = 'msg-row';
+  const tags = Object.entries(meta)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<span class="meta-tag">${escHtml(k)}: ${escHtml(v)}</span>`)
+    .join('');
+  row.innerHTML = `
+    <div class="avatar ai-av">AI</div>
+    <div class="bubble ai">
+      <div>${formatText(text)}</div>
+      ${tags ? `<div class="bubble-meta">${tags}</div>` : ''}
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function addErrorBubble(msg) {
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.innerHTML = `
+    <div class="avatar ai-av" style="background:linear-gradient(135deg,#f78166,#a1180d)">!</div>
+    <div class="bubble ai" style="border-color:rgba(247,129,102,0.3);color:#f78166">&#10060; ${escHtml(msg)}</div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+// ── Pipeline widget ───────────────────────────────────────────────────────────
+function createPipeline() {
+  clearEmpty();
+
+  // Outer row (avatar + content)
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.innerHTML = `<div class="avatar ai-av">AI</div>`;
+
+  const col = document.createElement('div');
+  col.className = 'pipeline-container';
+  row.appendChild(col);
+
+  // Trace toggle button — hidden until graph finishes
+  const toggle = document.createElement('div');
+  toggle.className = 'trace-toggle';
+  toggle.innerHTML = `<span>&#9881; Agent Trace</span><span class="trace-chevron">&#9660;</span>`;
+  col.appendChild(toggle);
+
+  // The pipeline steps box
+  const pipeline = document.createElement('div');
+  pipeline.className = 'pipeline';
+  col.appendChild(pipeline);
+
+  messagesEl.appendChild(row);
+  scrollBottom();
+
+  // Click: expand / collapse the pipeline
+  toggle.addEventListener('click', () => {
+    const willCollapse = !pipeline.classList.contains('collapsed');
+    pipeline.classList.toggle('collapsed', willCollapse);
+    toggle.classList.toggle('open', !willCollapse);
+  });
+
+  const steps = {};
+
+  function ensureStep(node) {
+    if (steps[node]) return;
+
+    const el = document.createElement('div');
+    el.className = 'pipe-step';
+    el.innerHTML = `
+      <div class="step-icon idle" data-icon></div>
+      <div class="step-body">
+        <div class="step-label">${NODE_LABELS[node] || node}</div>
+        <div class="step-status" data-status></div>
+        <div class="step-data-card" data-card></div>
+      </div>
+      <div class="step-right">
+        <span class="step-time" data-time></span>
+        <button class="step-data-btn" data-databtn>view data</button>
+      </div>`;
+    pipeline.appendChild(el);
+
+    const iconEl   = el.querySelector('[data-icon]');
+    const statusEl = el.querySelector('[data-status]');
+    const timeEl   = el.querySelector('[data-time]');
+    const dataBtn  = el.querySelector('[data-databtn]');
+    const dataCard = el.querySelector('[data-card]');
+
+    dataBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const opening = !dataCard.classList.contains('open');
+      dataCard.classList.toggle('open', opening);
+      dataBtn.textContent = opening ? 'hide data' : 'view data';
+    });
+
+    steps[node] = { el, iconEl, statusEl, timeEl, dataBtn, dataCard, startMs: null };
+  }
+
+  return {
+
+    // ── Node started: show pulsing icon + live status message ──────────────
+    nodeStart(node, message) {
+      ensureStep(node);
+      const s = steps[node];
+      s.startMs             = Date.now();
+      s.el.className        = 'pipe-step active';
+      s.iconEl.className    = 'step-icon active';
+      s.iconEl.textContent  = '●';
+      // ★ This is where NODE_STATUS_MESSAGES text appears
+      s.statusEl.textContent = message || '';
+      s.statusEl.classList.toggle('visible', !!message);
+      scrollBottom();
+    },
+
+    // ── Node finished: green check + done message + optional data button ───
+    nodeDone(node, message, data) {
+      ensureStep(node);
+      const s       = steps[node];
+      const elapsed = s.startMs
+        ? ((Date.now() - s.startMs) / 1000).toFixed(2) + 's'
+        : '';
+
+      s.el.className       = 'pipe-step done';
+      s.iconEl.className   = 'step-icon done';
+      s.iconEl.textContent = '✓';
+      s.timeEl.textContent = elapsed;
+      // ★ Replace starting message with done message
+      s.statusEl.textContent = message || '';
+      s.statusEl.classList.toggle('visible', !!message);
+
+      // Show "view data" button only if there's a non-empty payload
+      const hasData = data && Object.values(data).some(v => v != null);
+      if (hasData) {
+        s.dataCard.textContent = JSON.stringify(data, null, 2);
+        s.dataBtn.classList.add('visible');
+      }
+      scrollBottom();
+    },
+
+    // ── Graph complete: hide pipeline, show toggle, render AI bubble ────────
+    finalize(text, meta) {
+      // Collapse the pipeline and reveal the toggle so user can re-open it
+      pipeline.classList.add('collapsed');
+      toggle.classList.add('visible');          // show the toggle button
+      toggle.classList.remove('open');          // chevron points down (collapsed)
+
+      // Append the real AI response bubble after the pipeline row
+      const bubbleRow = document.createElement('div');
+      bubbleRow.className = 'msg-row';
+      const tags = Object.entries(meta)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `<span class="meta-tag">${escHtml(k)}: ${escHtml(String(v))}</span>`)
+        .join('');
+      bubbleRow.innerHTML = `
+        <div class="avatar ai-av">AI</div>
+        <div class="bubble ai">
+          <div>${formatText(text)}</div>
+          ${tags ? `<div class="bubble-meta">${tags}</div>` : ''}
+        </div>`;
+      messagesEl.appendChild(bubbleRow);
+      scrollBottom();
+    },
+
+    error(msg) {
+      const errEl = document.createElement('div');
+      errEl.style.cssText = 'color:var(--warn);font-size:12px;padding:6px 8px';
+      errEl.textContent = '⚠ ' + msg;
+      pipeline.appendChild(errEl);
+      scrollBottom();
+    }
+  };
+}
+
+// ── Streaming ─────────────────────────────────────────────────────────────────
+async function sendStreaming(sessionId, text) {
+  const pl = createPipeline();
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}/chat/message/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, user_input: text }),
+    });
+  } catch (err) {
+    pl.error('Cannot reach server: ' + err.message);
+    return;
+  }
+
+  if (!response.ok) {
+    const e = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+    pl.error(e.detail || 'Request failed');
+    return;
+  }
+
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop();
+
+    for (const part of parts) {
+      const line = part.replace(/^data:\s*/, '').trim();
+      if (!line) continue;
+
+      let ev;
+      try { ev = JSON.parse(line); }
+      catch { console.warn('Bad SSE chunk:', line); continue; }
+
+      switch (ev.type) {
+        case 'node_start':
+          // ev.message = e.g. "🧠 Orchestrator is analyzing your request..."
+          pl.nodeStart(ev.node, ev.message);
+          break;
+
+        case 'node_done':
+          // ev.message = e.g. "✅ Request analyzed."
+          // ev.data    = intermediate payload from _node_public_data()
+          pl.nodeDone(ev.node, ev.message, ev.data);
+          break;
+
+        case 'final':
+          pl.finalize(ev.response || '(no response)', {
+            agent:      ev.agent_name,
+            next_agent: ev.next_agent,
+          });
+          break;
+
+        case 'error':
+          pl.error(ev.detail || 'Unknown error');
+          break;
+      }
+    }
+  }
+}
+
+// ── Regular ───────────────────────────────────────────────────────────────────
+async function sendRegular(sessionId, text) {
+  clearEmpty();
+  const thinkRow = document.createElement('div');
+  thinkRow.className = 'msg-row';
+  thinkRow.innerHTML = `
+    <div class="avatar ai-av">AI</div>
+    <div class="bubble ai" style="color:var(--muted);font-style:italic;font-size:13px">Thinking&#8230;</div>`;
+  messagesEl.appendChild(thinkRow);
+  scrollBottom();
+
+  try {
+    const resp = await fetch(`${BASE_URL}/chat/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, user_input: text }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    thinkRow.remove();
+    addAiBubble(data.response, { agent: data.agent_name, next_agent: data.next_agent });
+  } catch (err) {
+    thinkRow.remove();
+    addErrorBubble(err.message);
+  }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+async function handleSend() {
+  const text      = (userInputEl.value ?? '').trim();
+  const sessionId = (sessionIdEl.value ?? '').trim();
+
+  if (!text || ['none','null','undefined'].includes(text.toLowerCase())) return;
+  if (!sessionId) { alert('Session ID is required'); return; }
+
+  addUserBubble(text);
+  userInputEl.value = '';
+  userInputEl.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  try {
+    streamToggle.checked
+      ? await sendStreaming(sessionId, text)
+      : await sendRegular(sessionId, text);
+  } catch (err) {
+    addErrorBubble(err.message);
+  } finally {
+    sendBtn.disabled = false;
+    userInputEl.focus();
+  }
+}
+</script>
+</body>
+</html>

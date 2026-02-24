@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.mediroute_router import router
 from routers.mediroute_streaming_router import router as streaming_router
 from routers.mediroute_chat_router import router as chat_router
+from routers.mediroute_chat_streaming_router import router as chat_streaming_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +49,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(streaming_router)
 app.include_router(chat_router)
+app.include_router(chat_streaming_router)
 
 @app.get("/health")
 async def health():

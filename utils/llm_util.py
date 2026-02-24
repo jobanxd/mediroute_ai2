@@ -26,7 +26,7 @@ def _build_client() -> OpenAI:
         return AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_endpoint=azure_endpoint,
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
         )
 
     # Local / standard OpenAI

@@ -2,6 +2,24 @@ from typing import TypedDict, Optional, Annotated
 from langgraph.graph.message import add_messages
 
 
+class VerificationOutput(TypedDict):
+    verified: bool
+    reason: Optional[str]
+    policy_number: Optional[str]
+    full_name: Optional[str]
+    date_of_birth: Optional[str]
+    insurance_provider: Optional[str]
+    plan_name: Optional[str]
+    plan_type: Optional[str]
+    coverage_type: Optional[str]
+    valid_from: Optional[str]
+    valid_until: Optional[str]
+    max_benefit_limit: Optional[float]
+    room_and_board_limit: Optional[float]
+    dependents: Optional[list[str]]
+    status: Optional[str]
+
+
 class ClassificationAgentOutput(TypedDict):
     """Output model of classification agent."""
     symptoms: str
@@ -124,8 +142,10 @@ class ReportOutput(TypedDict):
 class AgentState(TypedDict):
     """State of the Agents"""
     messages: Annotated[list, add_messages]
+    patient_name: str
     next_agent: str
     # Agent outputs
+    verification_output: VerificationOutput
     classification_agent_output: ClassificationAgentOutput
     selected_loa_services: list[str]
     match_agent_output: MatchAgentAutoSelectedOutput | MatchTop3Output

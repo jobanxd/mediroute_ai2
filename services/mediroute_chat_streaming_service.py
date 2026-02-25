@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 # ── Node display names & status messages ──────────────────────────────────────
 NODE_STATUS_MESSAGES: Dict[str, str] = {
+     "verification_agent":   "🔐 Verifying insurance eligibility...", 
     "orchestrator_agent":   "🧠 Orchestrator is analyzing your request...",
     "classification_agent": "🏥 Classifying emergency details...",
     "match_agent":          "🔍 Matching available hospitals and services...",
@@ -31,10 +32,11 @@ class ChatService:
     def __init__(self):
         self.sessions: Dict[str, AgentState] = {}
 
-    def _get_or_create_session(self, session_id: str) -> AgentState:
+    def _get_or_create_session(self, session_id: str, patient_name: str = "") -> AgentState:
         if session_id not in self.sessions:
             self.sessions[session_id] = AgentState(
                 messages=[],
+                patient_name=patient_name,
                 next_agent="",
                 classification_agent_output=None,
                 selected_loa_services=[],
@@ -43,28 +45,27 @@ class ChatService:
                 loa_output=None,
                 report_output=None,
             )
-            logger.info("NEW SESSION | Session: %s", session_id)
+            logger.info("NEW SESSION | Session: %s | Patient: %s", session_id, patient_name)
         else:
             logger.info("EXISTING SESSION | Session: %s", session_id)
         return self.sessions[session_id]
 
     # ── Non-streaming (kept for backwards compat) ─────────────────────────────
-    async def process_message(self, session_id: str, user_input: str) -> Dict:
+    async def process_message(self, session_id: str, patient_name: str, user_input: str) -> Dict:
         """Process a message and return the full final response (no streaming)."""
-        current_state = self._get_or_create_session(session_id)
+        current_state = self._get_or_create_session(session_id, patient_name)
         current_state["messages"].append(HumanMessage(content=user_input))
         logger.info("USER: %s", user_input)
 
         final_state = await graph.ainvoke(current_state)
-
-        # ainvoke returns the complete final state — safe to replace directly
         self.sessions[session_id] = final_state
 
         return self._build_result(session_id, final_state)
 
+
     # ── Streaming ─────────────────────────────────────────────────────────────
     async def stream_message(
-        self, session_id: str, user_input: str
+        self, session_id: str, patient_name: str, user_input: str
     ) -> AsyncGenerator[str, None]:
         """
         Yields SSE-formatted strings as the graph executes.
@@ -75,7 +76,7 @@ class ChatService:
           • "final"        — graph is done; carries the full result payload
           • "error"        — something went wrong
         """
-        current_state = self._get_or_create_session(session_id)
+        current_state = self._get_or_create_session(session_id, patient_name)
 
         # Append user message ONCE before invoking — this becomes part of history
         current_state["messages"].append(HumanMessage(content=user_input))
@@ -167,6 +168,7 @@ class ChatService:
     @staticmethod
     def _done_message(node_name: str) -> str:
         messages = {
+            "verification_agent":   "✅ Insurance verified.",
             "orchestrator_agent":   "✅ Request analyzed.",
             "classification_agent": "✅ Emergency classified.",
             "match_agent":          "✅ Hospitals matched.",
@@ -183,6 +185,8 @@ class ChatService:
         Reads directly from the node's own output dict (not full session state)
         so there is no risk of stale/wrong values.
         """
+        if node_name == "verification_agent":
+            return {"verfication": output.get("verification_output")}
         if node_name == "classification_agent":
             return {"classification": output.get("classification_agent_output")}
         if node_name == "match_agent":

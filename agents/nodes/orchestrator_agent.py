@@ -21,10 +21,13 @@ async def orchestrator_agent_node(state: AgentState) -> AgentState:
     logger.info("="*30)
 
     past_messages = state["messages"]
+    patient_name = state["patient_name"]
 
     # Build messages for LLM call
     messages = [
-        {"role": "system", "content": oa_prompts.ORCHESTRATOR_AGENT_PROMPT}
+        {"role": "system", "content": oa_prompts.ORCHESTRATOR_AGENT_PROMPT.format(
+            patient_name=patient_name,
+        )}
     ]
 
     for msg in past_messages:
@@ -36,7 +39,7 @@ async def orchestrator_agent_node(state: AgentState) -> AgentState:
 
     response = await call_llm(
         messages=messages,
-        tools=[oa_tools.CALL_CLASSIFICATION_AGENT_TOOL, oa_tools.CALL_LOA_AGENT_TOOL],
+        tools=[oa_tools.CALL_VERIFICATION_AGENT_TOOL, oa_tools.CALL_LOA_AGENT_TOOL],
         tool_choice="auto",
     )
 
@@ -53,15 +56,15 @@ async def orchestrator_agent_node(state: AgentState) -> AgentState:
 
         logger.info("Tool called: %s | Args: %s", tool_name, args)
 
-        if tool_name == "call_classification_agent":
+        if tool_name == "call_verification_agent":
             query = args["query"]
             purpose = args["purpose"]
 
-            logger.info("Routing to classification_agent — Purpose: %s", purpose)
+            logger.info("Routing to verification_agent — Purpose: %s", purpose)
 
             return {
                 "messages": [AIMessage(content=query, name="orchestrator_agent")],
-                "next_agent": "classification_agent"
+                "next_agent": "verification_agent"
             }
         
         if tool_name == "call_loa_agent":

@@ -22,6 +22,7 @@ async def send_message(request: ChatRequest):
     try:
         result = await chat_service.process_message(
             session_id=request.session_id,
+            patient_name=request.patient_name,
             user_input=request.user_input,
         )
         return ChatResponse(
@@ -55,6 +56,7 @@ async def send_message_stream(request: ChatRequest):
     return StreamingResponse(
         chat_service.stream_message(
             session_id=request.session_id,
+            patient_name=request.patient_name,
             user_input=request.user_input,
         ),
         media_type="text/event-stream",

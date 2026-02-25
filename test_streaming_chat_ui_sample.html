@@ -87,12 +87,54 @@
 
   /* ── Session bar ── */
   .session-bar {
-    padding: 8px 24px; background: var(--bg);
+    padding: 8px 24px;
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
   }
-  .session-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); white-space: nowrap; }
-  .session-bar input { flex: 1; background: transparent; border: none; outline: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  .session-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .session-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    min-width: 0;
+  }
+
+  .session-bar input#sessionId {
+    max-width: 160px;
+    flex-shrink: 0;
+  }
+
+  .session-bar input#patientName {
+    flex: 1;
+    color: var(--text);
+  }
+
+  .session-bar input#patientName::placeholder {
+    color: var(--muted);
+  }
+
+  .session-divider {
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
 
   /* ── Messages ── */
   .messages {
@@ -193,7 +235,6 @@
   .pipe-step.error-step .step-label { color: var(--warn); }
   .pipe-step:not(.active):not(.done):not(.error-step) .step-label { color: var(--muted); }
 
-  /* ★ Live status message line ★ */
   .step-status {
     font-size: 11px; line-height: 1.3; font-style: italic;
     color: var(--muted); display: none;
@@ -292,9 +333,13 @@
     </div>
   </header>
 
+  <!-- ── Session + Patient bar ── -->
   <div class="session-bar">
     <span class="session-label">SESSION /</span>
     <input type="text" id="sessionId" value="test-session-001" spellcheck="false">
+    <div class="session-divider"></div>
+    <span class="session-label">PATIENT /</span>
+    <input type="text" id="patientName" value="Juan dela Cruz" placeholder="Full patient name..." spellcheck="false">
   </div>
 
   <div class="messages" id="messages">
@@ -336,6 +381,7 @@ const emptyState   = document.getElementById('emptyState');
 const userInputEl  = document.getElementById('userInput');
 const sendBtn      = document.getElementById('sendBtn');
 const sessionIdEl  = document.getElementById('sessionId');
+const patientNameEl = document.getElementById('patientName');
 const streamToggle = document.getElementById('streamToggle');
 const modeBadge    = document.getElementById('modeBadge');
 
@@ -362,7 +408,6 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Converts plain AI text to safe HTML with newlines and basic markdown
 function formatText(str) {
   return escHtml(str)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -412,7 +457,6 @@ function addErrorBubble(msg) {
 function createPipeline() {
   clearEmpty();
 
-  // Outer row (avatar + content)
   const row = document.createElement('div');
   row.className = 'msg-row';
   row.innerHTML = `<div class="avatar ai-av">AI</div>`;
@@ -421,13 +465,11 @@ function createPipeline() {
   col.className = 'pipeline-container';
   row.appendChild(col);
 
-  // Trace toggle button — hidden until graph finishes
   const toggle = document.createElement('div');
   toggle.className = 'trace-toggle';
   toggle.innerHTML = `<span>&#9881; Agent Trace</span><span class="trace-chevron">&#9660;</span>`;
   col.appendChild(toggle);
 
-  // The pipeline steps box
   const pipeline = document.createElement('div');
   pipeline.className = 'pipeline';
   col.appendChild(pipeline);
@@ -435,7 +477,6 @@ function createPipeline() {
   messagesEl.appendChild(row);
   scrollBottom();
 
-  // Click: expand / collapse the pipeline
   toggle.addEventListener('click', () => {
     const willCollapse = !pipeline.classList.contains('collapsed');
     pipeline.classList.toggle('collapsed', willCollapse);
@@ -479,8 +520,6 @@ function createPipeline() {
   }
 
   return {
-
-    // ── Node started: show pulsing icon + live status message ──────────────
     nodeStart(node, message) {
       ensureStep(node);
       const s = steps[node];
@@ -488,13 +527,11 @@ function createPipeline() {
       s.el.className        = 'pipe-step active';
       s.iconEl.className    = 'step-icon active';
       s.iconEl.textContent  = '●';
-      // ★ This is where NODE_STATUS_MESSAGES text appears
       s.statusEl.textContent = message || '';
       s.statusEl.classList.toggle('visible', !!message);
       scrollBottom();
     },
 
-    // ── Node finished: green check + done message + optional data button ───
     nodeDone(node, message, data) {
       ensureStep(node);
       const s       = steps[node];
@@ -506,11 +543,9 @@ function createPipeline() {
       s.iconEl.className   = 'step-icon done';
       s.iconEl.textContent = '✓';
       s.timeEl.textContent = elapsed;
-      // ★ Replace starting message with done message
       s.statusEl.textContent = message || '';
       s.statusEl.classList.toggle('visible', !!message);
 
-      // Show "view data" button only if there's a non-empty payload
       const hasData = data && Object.values(data).some(v => v != null);
       if (hasData) {
         s.dataCard.textContent = JSON.stringify(data, null, 2);
@@ -519,14 +554,11 @@ function createPipeline() {
       scrollBottom();
     },
 
-    // ── Graph complete: hide pipeline, show toggle, render AI bubble ────────
     finalize(text, meta) {
-      // Collapse the pipeline and reveal the toggle so user can re-open it
       pipeline.classList.add('collapsed');
-      toggle.classList.add('visible');          // show the toggle button
-      toggle.classList.remove('open');          // chevron points down (collapsed)
+      toggle.classList.add('visible');
+      toggle.classList.remove('open');
 
-      // Append the real AI response bubble after the pipeline row
       const bubbleRow = document.createElement('div');
       bubbleRow.className = 'msg-row';
       const tags = Object.entries(meta)
@@ -554,7 +586,7 @@ function createPipeline() {
 }
 
 // ── Streaming ─────────────────────────────────────────────────────────────────
-async function sendStreaming(sessionId, text) {
+async function sendStreaming(sessionId, patientName, text) {
   const pl = createPipeline();
 
   let response;
@@ -562,7 +594,11 @@ async function sendStreaming(sessionId, text) {
     response = await fetch(`${BASE_URL}/chat/message/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, user_input: text }),
+      body: JSON.stringify({
+        session_id: sessionId,
+        patient_name: patientName,
+        user_input: text
+      }),
     });
   } catch (err) {
     pl.error('Cannot reach server: ' + err.message);
@@ -597,23 +633,17 @@ async function sendStreaming(sessionId, text) {
 
       switch (ev.type) {
         case 'node_start':
-          // ev.message = e.g. "🧠 Orchestrator is analyzing your request..."
           pl.nodeStart(ev.node, ev.message);
           break;
-
         case 'node_done':
-          // ev.message = e.g. "✅ Request analyzed."
-          // ev.data    = intermediate payload from _node_public_data()
           pl.nodeDone(ev.node, ev.message, ev.data);
           break;
-
         case 'final':
           pl.finalize(ev.response || '(no response)', {
             agent:      ev.agent_name,
             next_agent: ev.next_agent,
           });
           break;
-
         case 'error':
           pl.error(ev.detail || 'Unknown error');
           break;
@@ -623,7 +653,7 @@ async function sendStreaming(sessionId, text) {
 }
 
 // ── Regular ───────────────────────────────────────────────────────────────────
-async function sendRegular(sessionId, text) {
+async function sendRegular(sessionId, patientName, text) {
   clearEmpty();
   const thinkRow = document.createElement('div');
   thinkRow.className = 'msg-row';
@@ -637,7 +667,11 @@ async function sendRegular(sessionId, text) {
     const resp = await fetch(`${BASE_URL}/chat/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, user_input: text }),
+      body: JSON.stringify({
+        session_id: sessionId,
+        patient_name: patientName,
+        user_input: text
+      }),
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
@@ -651,11 +685,13 @@ async function sendRegular(sessionId, text) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function handleSend() {
-  const text      = (userInputEl.value ?? '').trim();
-  const sessionId = (sessionIdEl.value ?? '').trim();
+  const text        = (userInputEl.value ?? '').trim();
+  const sessionId   = (sessionIdEl.value ?? '').trim();
+  const patientName = (patientNameEl.value ?? '').trim();
 
   if (!text || ['none','null','undefined'].includes(text.toLowerCase())) return;
   if (!sessionId) { alert('Session ID is required'); return; }
+  if (!patientName) { alert('Patient name is required'); return; }
 
   addUserBubble(text);
   userInputEl.value = '';
@@ -664,8 +700,8 @@ async function handleSend() {
 
   try {
     streamToggle.checked
-      ? await sendStreaming(sessionId, text)
-      : await sendRegular(sessionId, text);
+      ? await sendStreaming(sessionId, patientName, text)
+      : await sendRegular(sessionId, patientName, text);
   } catch (err) {
     addErrorBubble(err.message);
   } finally {

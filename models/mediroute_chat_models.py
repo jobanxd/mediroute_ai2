@@ -8,6 +8,7 @@ from agents.state import LOAOutput, ReportOutput
 class ChatRequest(BaseModel):
     """Request model for chat interactions."""
     session_id: str
+    patient_name: str
     user_input: str
 
 

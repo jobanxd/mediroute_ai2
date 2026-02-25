@@ -1,35 +1,44 @@
 """Orchestrator agent tools definitions."""
 
-CALL_CLASSIFICATION_AGENT_TOOL = {
+CALL_VERIFICATION_AGENT_TOOL = {
     "type": "function",
     "function": {
-        "name": "call_classification_agent",
+        "name": "call_verification_agent",
         "description": (
-            "Use this tool when the patient has provided their symptoms or emergency condition, "
-            "their current location, preffered hospital, and their insurance provider. "
-            "This will route the request to the intake agent for structured extraction "
-            "and hospital matching."
+            "Use this tool when the patient has provided ALL of the following: "
+            "their full name, symptoms or emergency condition, current location, "
+            "preferred hospital (or explicitly stated they have none), and their insurance provider. "
+            "This will verify the patient's insurance eligibility first, then automatically "
+            "route to the classification agent for emergency processing."
         ),
         "parameters": {
             "type": "object",
             "properties": {
+                "patient_name": {
+                    "type": "string",
+                    "description": (
+                        "The full name of the patient or policy holder "
+                        "(e.g. 'Juan dela Cruz'). Used to look up their insurance record."
+                    )
+                },
                 "query": {
                     "type": "string",
                     "description": (
                         "The full original message from the patient describing "
-                        "their emergency, location, and insurance provider."
+                        "their emergency, location, insurance provider, and preferred hospital. "
+                        "This will be passed to the classification agent after verification."
                     )
                 },
                 "purpose": {
                     "type": "string",
                     "description": (
-                        "Brief reason why this is being routed to the intake agent "
-                        "(e.g. 'Patient described cardiac symptoms with location "
-                        "and insurance info provided')."
+                        "Brief reason why this is being routed "
+                        "(e.g. 'Patient Juan dela Cruz described cardiac symptoms in BGC "
+                        "with AXA insurance, all required info collected')."
                     )
                 }
             },
-            "required": ["query", "purpose"]
+            "required": ["patient_name", "query", "purpose"]
         }
     }
 }

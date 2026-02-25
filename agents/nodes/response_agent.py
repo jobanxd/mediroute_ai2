@@ -10,6 +10,30 @@ from utils.llm_util import call_llm
 logger = logging.getLogger(__name__)
 
 
+# ── Phase 0 — Verification Failed ────────────────────────────────────────────
+async def _handle_phase0(state: AgentState) -> str:
+    verification_output = state.get("verification_output", {})
+    patient_name = state.get("patient_name", "the patient")
+
+    messages = [
+        {"role": "system", "content": ra_prompts.RESPONSE_AGENT_PHASE0_SYSTEM_PROMPT},
+        {"role": "user", "content": ra_prompts.RESPONSE_AGENT_PHASE0_QUERY_PROMPT.format(
+            patient_name=patient_name,
+            verified=verification_output.get("verified", False),
+            reason=verification_output.get("reason", "Unknown reason"),
+            policy_number=verification_output.get("policy_number") or "N/A",
+            insurance_provider=verification_output.get("insurance_provider") or "N/A",
+            plan_name=verification_output.get("plan_name") or "N/A",
+            status=verification_output.get("status") or "N/A",
+        )}
+    ]
+
+    logger.info("Response agent Phase 0 (verification failed) — calling LLM...")
+
+    response = await call_llm(messages=messages)
+    return response.choices[0].message.content or "We were unable to verify your insurance. Please contact your provider."
+
+
 # ── Phase 1 ───────────────────────────────────────────────────────────────────
 async def _handle_phase1(state: AgentState) -> str:
     ca_output = state.get("classification_agent_output", {})
@@ -92,6 +116,7 @@ async def _handle_phase2(state: AgentState, report_output: dict) -> str:
 async def response_agent_node(state: AgentState) -> AgentState:
     """
     Response agent node.
+    Phase 0 — verification failed: inform patient calmly and guide next steps.
     Phase 1 — no report_output yet: present top 3 hospitals, give first aid guidance.
     Phase 2 — report_output present: relay final confirmation to patient.
     """
@@ -99,10 +124,20 @@ async def response_agent_node(state: AgentState) -> AgentState:
     logger.info("Response Agent Node")
     logger.info("="*30)
 
+    verification_output = state.get("verification_output") or {}
     report_output = state.get("report_output")
+
+    # Phase 0 — verification was attempted but failed
+    is_phase0 = (
+        verification_output
+        and not verification_output.get("verified", True)
+    )
+
     is_phase2 = report_output is not None and report_output.get("generated", False)
 
-    if is_phase2:
+    if is_phase0:
+        response = await _handle_phase0(state)
+    elif is_phase2:
         response = await _handle_phase2(state, report_output)
     else:
         response = await _handle_phase1(state)

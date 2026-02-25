@@ -24,7 +24,7 @@ HOSPITALS = [
             "emergency_room": True
         },
         "insurance_accepted": [
-            "Maxicare",
+            "GlobalCare",
             "AIA Philippines Life",
             "Insular Life Assurance Company",
         ],
@@ -52,7 +52,7 @@ HOSPITALS = [
             "emergency_room": True
         },
         "insurance_accepted": [
-            "Maxicare",
+            "GlobalCare",
             "AIA Philippines Life",
         ],
         "emergency_types_supported": [
@@ -80,7 +80,7 @@ HOSPITALS = [
         },
         "insurance_accepted": [
             "Insular Life Assurance Company",
-            "Maxicare",
+            "GlobalCare",
         ],
         "emergency_types_supported": [
             "CARDIAC", "TRAUMA", "NEUROLOGICAL", "RESPIRATORY", "BURNS", "GENERAL"
@@ -106,7 +106,7 @@ HOSPITALS = [
             "emergency_room": True
         },
         "insurance_accepted": [
-            "Maxicare",
+            "GlobalCare",
             "Insular Life Assurance Company",
         ],
         "emergency_types_supported": [
@@ -157,7 +157,7 @@ HOSPITALS = [
             "respiratory_unit": False,
             "emergency_room": True
         },
-        "insurance_accepted": ["Maxicare"],
+        "insurance_accepted": ["GlobalCare"],
         "emergency_types_supported": ["GENERAL"]
     },
     {
@@ -182,7 +182,7 @@ HOSPITALS = [
         "insurance_accepted": [
             "AIA Philippines Life",
             "Insular Life Assurance Company",
-            "Maxicare",
+            "GlobalCare",
         ],
         "emergency_types_supported": ["TRAUMA", "BURNS", "RESPIRATORY", "GENERAL"]
     },
@@ -209,7 +209,7 @@ HOSPITALS = [
             "emergency_room": True
         },
         "insurance_accepted": [
-            "Maxicare",
+            "GlobalCare",
             "AIA Philippines Life",
         ],
         "emergency_types_supported": [
@@ -260,7 +260,7 @@ HOSPITALS = [
             "emergency_room": True
         },
         "insurance_accepted": [
-            "Maxicare",
+            "GlobalCare",
             "AIA Philippines Life",
             "Insular Life Assurance Company",
         ],

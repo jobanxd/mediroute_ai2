@@ -6,6 +6,11 @@ from langchain_core.messages import AIMessage
 
 from agents.state import AgentState
 from data.insurance import INSURANCE_RECORDS
+from data.insurance_claims import (
+    get_claims_for_policy,
+    calculate_used_benefits,
+    calculate_remaining_benefits
+)
 from utils.llm_util import call_llm
 
 logger = logging.getLogger(__name__)
@@ -117,6 +122,25 @@ async def verification_agent_node(state: AgentState) -> AgentState:
         record["valid_until"],
     )
 
+    # ── Calculate Benefit Usage ───────────────────────────────────────────────
+    policy_number = record["policy_number"]
+    valid_from = record["valid_from"]
+    valid_until = record["valid_until"]
+    max_benefit = record["max_benefit_limit"]
+    
+    # Get claims history within the current policy period
+    claims_history = get_claims_for_policy(policy_number, valid_from, valid_until)
+    used_benefits = calculate_used_benefits(policy_number, valid_from, valid_until)
+    remaining_benefits = calculate_remaining_benefits(policy_number, max_benefit, valid_from, valid_until)
+    
+    logger.info(
+        "Benefit tracking for policy %s: Used: PHP %,.2f | Remaining: PHP %,.2f | Claims count: %d",
+        policy_number,
+        used_benefits,
+        remaining_benefits,
+        len(claims_history)
+    )
+
     original_query = next(
         (m.content for m in reversed(state_messages)
          if isinstance(m, AIMessage) and m.name == "orchestrator_agent"),
@@ -129,6 +153,8 @@ async def verification_agent_node(state: AgentState) -> AgentState:
         f"({record['plan_name']}) is active and valid until {record['valid_until']}. "
         f"Coverage type: {record['coverage_type']}. "
         f"Max benefit limit: PHP {record['max_benefit_limit']:,.2f}. "
+        f"Used benefits: PHP {used_benefits:,.2f}. "
+        f"Remaining benefits: PHP {remaining_benefits:,.2f} ({len(claims_history)} claim(s) this period). "
         f"Verification passed. Forwarding the following request to classification: "
         f"\"{original_query}\""
     )
@@ -152,6 +178,9 @@ async def verification_agent_node(state: AgentState) -> AgentState:
             "room_and_board_limit": record["room_and_board_limit"],
             "dependents": record["dependents"],
             "status": record["status"],
+            "used_benefits": used_benefits,
+            "remaining_benefits": remaining_benefits,
+            "claims_history": claims_history,
         },
         "next_agent": "classification_agent"
     }

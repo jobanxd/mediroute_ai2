@@ -56,7 +56,7 @@ Set dispatch_required to false if ALL of the following apply:
 When in doubt, default to true. Patient safety takes priority.
 
 ## Accepted Insurance Providers:
-- Maxicare
+- GlobalCare
 - AIA Philippines Life
 - Insular Life Assurance Company
 - If the input does not match any of the above, return it as-is under insurance_provider and flag it in classification_rationale.

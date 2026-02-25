@@ -18,6 +18,10 @@ class VerificationOutput(TypedDict):
     room_and_board_limit: Optional[float]
     dependents: Optional[list[str]]
     status: Optional[str]
+    # Benefit tracking fields
+    used_benefits: Optional[float]
+    remaining_benefits: Optional[float]
+    claims_history: Optional[list[dict]]
 
 
 class ClassificationAgentOutput(TypedDict):

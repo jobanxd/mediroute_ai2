@@ -214,19 +214,13 @@ class ChatService:
             return {
                 "session_id":    session_id,
                 "response":      "Something went wrong. Please try again.",
-                "next_agent":    state.get("next_agent", "unknown"),
                 "agent_name":    None,
-                "loa_output":    state.get("loa_output", {}),
-                "report_output": state.get("report_output", {}),
             }
 
         return {
             "session_id":    session_id,
             "response":      ai_message.content,
-            "next_agent":    state.get("next_agent", "unknown"),
             "agent_name":    getattr(ai_message, "name", None),
-            "loa_output":    state.get("loa_output", {}),
-            "report_output": state.get("report_output", {}),
         }
 
     def get_session_history(self, session_id: str) -> List:

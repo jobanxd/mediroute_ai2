@@ -17,6 +17,3 @@ class ChatResponse(BaseModel):
     session_id: str
     response: str
     agent_name: Optional[str] = None
-    next_agent: Optional[str] = None
-    loa_output: Optional[LOAOutput] = None
-    report_output: Optional[ReportOutput] = None

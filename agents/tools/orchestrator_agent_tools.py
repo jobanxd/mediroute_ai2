@@ -6,10 +6,11 @@ CALL_VERIFICATION_AGENT_TOOL = {
         "name": "call_verification_agent",
         "description": (
             "Use this tool when the patient has provided ALL of the following: "
-            "their full name, symptoms or emergency condition, current location, "
-            "preferred hospital (or explicitly stated they have none), and their insurance provider. "
-            "This will verify the patient's insurance eligibility first, then automatically "
-            "route to the classification agent for emergency processing."
+            "symptoms or emergency condition, current location, and "
+            "preferred hospital (or explicitly stated they have none). "
+            "This will verify the patient's insurance eligibility by looking up their record "
+            "using their full name, then automatically route to the classification agent "
+            "for emergency processing. The insurance provider will be automatically retrieved."
         ),
         "parameters": {
             "type": "object",
@@ -25,7 +26,7 @@ CALL_VERIFICATION_AGENT_TOOL = {
                     "type": "string",
                     "description": (
                         "The full original message from the patient describing "
-                        "their emergency, location, insurance provider, and preferred hospital. "
+                        "their emergency, location, and preferred hospital. "
                         "This will be passed to the classification agent after verification."
                     )
                 },
@@ -33,8 +34,8 @@ CALL_VERIFICATION_AGENT_TOOL = {
                     "type": "string",
                     "description": (
                         "Brief reason why this is being routed "
-                        "(e.g. 'Patient Juan dela Cruz described cardiac symptoms in BGC "
-                        "with AXA insurance, all required info collected')."
+                        "(e.g. 'Patient Juan dela Cruz described cardiac symptoms in BGC, "
+                        "all required info collected')."
                     )
                 }
             },

@@ -155,7 +155,9 @@ async def verification_agent_node(state: AgentState) -> AgentState:
         f"Max benefit limit: PHP {record['max_benefit_limit']:,.2f}. "
         f"Used benefits: PHP {used_benefits:,.2f}. "
         f"Remaining benefits: PHP {remaining_benefits:,.2f} ({len(claims_history)} claim(s) this period). "
-        f"Verification passed. Forwarding the following request to classification: "
+        f"Verification passed. "
+        f"Insurance provider: {record['insurance_provider']}. "
+        f"Forwarding the following request to classification: "
         f"\"{original_query}\""
     )
 

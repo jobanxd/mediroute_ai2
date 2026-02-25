@@ -46,7 +46,7 @@ HOSPITALS = [
             "mri": True,
             "icu": True,
             "cardiac_cath_lab": True,
-            "burn_unit": False,
+            "burn_unit": True,
             "stroke_unit": True,
             "respiratory_unit": True,
             "emergency_room": True
@@ -56,7 +56,7 @@ HOSPITALS = [
             "AIA Philippines Life",
         ],
         "emergency_types_supported": [
-            "CARDIAC", "TRAUMA", "NEUROLOGICAL", "RESPIRATORY", "GENERAL"
+            "CARDIAC", "TRAUMA", "NEUROLOGICAL", "RESPIRATORY", "BURNS", "GENERAL"
         ]
     },
     {

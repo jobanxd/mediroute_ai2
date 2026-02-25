@@ -40,6 +40,10 @@ class MatchAgentAutoSelectedOutput(TypedDict):
     matched: bool
     hospital_id: str
     hospital_name: str
+    patient_lat: float
+    patient_long: float
+    lat: float
+    long: float
     address: str
     contact: str
     emergency_contact: str
@@ -52,6 +56,8 @@ class MatchAgentAutoSelectedOutput(TypedDict):
 class HospitalOption(TypedDict):
     hospital_id: str
     hospital_name: str
+    lat: float
+    long: float
     address: str
     contact: str
     emergency_contact: str
@@ -60,6 +66,8 @@ class HospitalOption(TypedDict):
 
 class MatchTop3Output(TypedDict):
     matched: bool
+    patient_lat: float
+    patient_long: float
     top_hospitals: list[HospitalOption]
     preferred_hospital_fail_reason: str
     preferred_hospital_used: bool
